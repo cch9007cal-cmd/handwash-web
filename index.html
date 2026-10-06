@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手部衛生宣導闖關活動</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- 引入 FontAwesome 作為圖示來源 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f0fdfa; /* Tailwind teal-50 */
+            touch-action: manipulation; /* 改善觸控體驗 */
+        }
+
+        .game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 隱藏未啟用的區塊 */
+        .hidden-section {
+            display: none !important;
+        }
+
+        /* 關卡卡片樣式 */
+        .step-card {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        
+        .step-card:active {
+            transform: scale(0.95);
+        }
+
+        /* 拖曳相關樣式 (雖然改為點擊選擇，但保留一點互動感) */
+        .selected-step {
+            border: 4px solid #0d9488; /* Tailwind teal-600 */
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 動畫效果 */
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .pop-in {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* 較大且明顯的按鈕 */
+        .btn-large {
+            padding: 1rem 2rem;
+            font-size: 1.5rem;
+            border-radius: 1rem;
+            font-weight: bold;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.2s;
+        }
+        
+        .btn-large:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        /* 洗手步驟的扁平化圖標容器樣式 */
+        .step-icon-container {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            background-color: #e0f2fe; /* light blue */
+            border: 3px solid #bae6fd;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        
+        /* 步驟選項的樣式調整，為了容納圖片稍微放大 */
+        .step-option-card {
+            width: 110px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            border-radius: 16px;
+            border: 3px solid #cbd5e1;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        
+        @media (min-width: 640px) {
+            .step-option-card {
+                width: 130px;
+                height: 170px;
+            }
+            .step-icon-container {
+                width: 70px;
+                height: 70px;
+            }
+        }
+
+        .step-option-card:hover {
+            border-color: #93c5fd;
+            transform: translateY(-2px);
+        }
+        
+        .step-option-card.selected-in-dropzone {
+            background-color: #eff6ff;
+            border-color: #60a5fa;
+            border-style: solid;
+        }
+
+    </style>
+</head>
+<body class="text-gray-800">
+
+<div class="game-container p-4 sm:p-8">
+    
+    <!-- 標題區塊 -->
+    <header class="text-center mb-8 pop-in">
+        <h1 class="text-4xl sm:text-5xl font-black text-teal-700 mb-2 drop-shadow-md">手部衛生闖關大挑戰</h1>
+        <p class="text-xl sm:text-2xl text-teal-600 font-bold">打擊細菌，從洗手做起！</p>
+    </header>
+
+    <!-- 主畫面 (首頁) -->
+    <section id="home-screen" class="flex-1 flex flex-col items-center justify-center space-y-8 pop-in" style="animation-delay: 0.2s;">
+        <div class="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full text-center border-4 border-teal-200">
+            <div class="text-9xl mb-6">🧼</div>
+            <h2 class="text-3xl font-bold mb-4 text-gray-700">歡迎來到洗手闖關！</h2>
+            <p class="text-xl mb-8 text-gray-600">完成兩個簡單的小關卡，成為洗手達人吧！</p>
+            <button onclick="startGame()" class="btn-large bg-teal-500 hover:bg-teal-600 text-white w-full">
+                開始闖關 🚀
+            </button>
+        </div>
+    </section>
+
+    <!-- 第一關：洗手時機 -->
+    <section id="level-1-screen" class="hidden-section flex-1 flex flex-col items-center">
+        <div class="w-full max-w-2xl bg-white p-6 sm:p-8 rounded-3xl shadow-xl border-4 border-amber-200">
+            <h2 class="text-3xl sm:text-4xl font-bold text-center text-amber-600 mb-2">第一關：什麼時候該洗手？</h2>
+            <p class="text-xl text-center text-gray-600 mb-6">請選出所有您覺得 <strong class="text-red-500">需要洗手</strong> 的時機！（可以選好幾個喔）</p>
+            
+            <div id="timing-grid" class="grid grid-cols-2 gap-4 sm:gap-6 mb-8">
+                <!-- 選項會透過 JS 動態生成 -->
+            </div>
+
+            <div class="text-center space-y-4">
+                <button onclick="checkLevel1()" class="btn-large bg-amber-500 hover:bg-amber-600 text-white w-full sm:w-auto">
+                    我選好啦！確認答案 ✅
+                </button>
+                <p id="level-1-feedback" class="text-2xl font-bold hidden h-8"></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 第二關：洗手步驟 (內外夾弓大立腕) -->
+    <section id="level-2-screen" class="hidden-section flex-1 flex flex-col items-center">
+        <div class="w-full max-w-4xl bg-white p-6 sm:p-8 rounded-3xl shadow-xl border-4 border-blue-200">
+            <h2 class="text-3xl sm:text-4xl font-bold text-center text-blue-600 mb-2">第二關：正確洗手七字訣</h2>
+            <p class="text-xl text-center text-gray-600 mb-2">請依照洗手順序，依序點擊下方的圖卡把它們排好！</p>
+            <p class="text-lg text-center text-blue-500 font-bold mb-6">(口訣：內、外、夾、弓、大、立、腕)</p>
+
+            <!-- 放置區 (已選擇的答案) -->
+            <div id="drop-zone" class="flex flex-wrap justify-center gap-3 sm:gap-4 mb-8 min-h-[160px] sm:min-h-[190px] p-4 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-400">
+                <!-- 填入的步驟會顯示在這裡 -->
+            </div>
+
+            <!-- 選擇區 (未選擇的選項) -->
+            <div id="options-zone" class="flex flex-wrap justify-center gap-3 sm:gap-4 mb-8">
+                <!-- 選項會透過 JS 動態生成 -->
+            </div>
+
+            <div class="text-center space-x-0 sm:space-x-4 space-y-4 sm:space-y-0 flex flex-col sm:flex-row justify-center">
+                <button onclick="resetLevel2()" class="btn-large bg-gray-400 hover:bg-gray-500 text-white">
+                    重新排列 🔄
+                </button>
+                <button onclick="checkLevel2()" class="btn-large bg-blue-500 hover:bg-blue-600 text-white">
+                    完成送出 ✅
+                </button>
+            </div>
+             <p id="level-2-feedback" class="text-2xl font-bold text-center mt-6 hidden h-8"></p>
+        </div>
+    </section>
+
+    <!-- 過關畫面 -->
+    <section id="success-screen" class="hidden-section flex-1 flex flex-col items-center justify-center pop-in">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full text-center border-4 border-green-300 relative overflow-hidden">
+            <!-- 移除原本簡單的 CSS 五彩紙屑，改用 canvas-confetti -->
+            <div class="text-9xl mb-6 relative z-10">🏆</div>
+            <h2 class="text-4xl font-black mb-4 text-green-600 relative z-10">恭喜過關！</h2>
+            <p class="text-2xl mb-8 text-gray-700 font-bold relative z-10">您現在是手部衛生達人囉！</p>
+            <p class="text-lg mb-8 text-gray-600 relative z-10">現在就去洗手台，用這七個步驟洗洗手吧！</p>
+            <button onclick="restartGame()" class="btn-large bg-green-500 hover:bg-green-600 text-white w-full relative z-10">
+                再玩一次 🔁
+            </button>
+        </div>
+    </section>
+
+</div>
+
+<script>
+    // --- 遊戲資料 ---
+
+    // 第一關：洗手時機資料
+    const timingData = [
+        { id: 't1', text: '吃東西前', emoji: '🍱', isCorrect: true },
+        { id: 't2', text: '看電視時', emoji: '📺', isCorrect: false },
+        { id: 't3', text: '上廁所後', emoji: '🚽', isCorrect: true },
+        { id: 't4', text: '擤鼻涕後', emoji: '🤧', isCorrect: true },
+        { id: 't5', text: '睡覺前', emoji: '🛏️', isCorrect: false },
+        { id: 't6', text: '看病前後', emoji: '🏥', isCorrect: true }
+    ];
+
+    // 第二關：洗手步驟資料 (內外夾弓大立腕) - 加入 FontAwesome icon class 模擬圖片
+    const stepsData = [
+        { id: 's1', text: '內', desc: '搓揉手心', order: 1, icon: 'fa-solid fa-hands', color: 'text-pink-500' },
+        { id: 's2', text: '外', desc: '搓揉手背', order: 2, icon: 'fa-solid fa-hand-back-fist', color: 'text-purple-500' },
+        { id: 's3', text: '夾', desc: '搓揉指縫', order: 3, icon: 'fa-solid fa-hand-holding-hand', color: 'text-indigo-500' },
+        { id: 's4', text: '弓', desc: '搓揉指背', order: 4, icon: 'fa-solid fa-hand-fist', color: 'text-blue-500' },
+        { id: 's5', text: '大', desc: '搓大拇指', order: 5, icon: 'fa-solid fa-thumbs-up', color: 'text-teal-500' },
+        { id: 's6', text: '立', desc: '搓揉指尖', order: 6, icon: 'fa-solid fa-hand-pointer', color: 'text-green-500' },
+        { id: 's7', text: '腕', desc: '搓揉手腕', order: 7, icon: 'fa-solid fa-handshake', color: 'text-orange-500' }
+    ];
+
+    // 狀態變數
+    let selectedTimings = new Set();
+    let currentStepAnswers = [];
+    let availableSteps = [];
+
+    // --- 畫面切換控制 ---
+    function showScreen(screenId) {
+        const screens = ['home-screen', 'level-1-screen', 'level-2-screen', 'success-screen'];
+        screens.forEach(id => {
+            document.getElementById(id).classList.add('hidden-section');
+            document.getElementById(id).classList.remove('pop-in');
+        });
+        const targetScreen = document.getElementById(screenId);
+        targetScreen.classList.remove('hidden-section');
+        // 強制重繪以觸發動畫
+        void targetScreen.offsetWidth;
+        targetScreen.classList.add('pop-in');
+    }
+
+    // --- 遊戲流程 ---
+    function startGame() {
+        initLevel1();
+        showScreen('level-1-screen');
+    }
+
+    function restartGame() {
+        showScreen('home-screen');
+    }
+
+    // --- 第一關邏輯 ---
+    function initLevel1() {
+        selectedTimings.clear();
+        const grid = document.getElementById('timing-grid');
+        grid.innerHTML = '';
+        
+        // 隱藏回饋訊息
+        const feedback = document.getElementById('level-1-feedback');
+        feedback.classList.add('hidden');
+
+        // 打亂選項順序 (簡單的洗牌演算法)
+        const shuffledData = [...timingData].sort(() => Math.random() - 0.5);
+
+        shuffledData.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'step-card bg-gray-50 border-4 border-gray-200 rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center text-center select-none';
+            card.id = `card-${item.id}`;
+            card.onclick = () => toggleTimingSelection(item.id, card);
+            
+            card.innerHTML = `
+                <div class="text-5xl sm:text-7xl mb-2 sm:mb-4">${item.emoji}</div>
+                <div class="text-xl sm:text-2xl font-bold text-gray-700">${item.text}</div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function toggleTimingSelection(id, cardElement) {
+        if (selectedTimings.has(id)) {
+            selectedTimings.delete(id);
+            cardElement.classList.remove('border-teal-500', 'bg-teal-50');
+            cardElement.classList.add('border-gray-200', 'bg-gray-50');
+            // 移除打勾圖示 (如果有加上)
+            const tick = cardElement.querySelector('.check-mark');
+            if(tick) tick.remove();
+        } else {
+            selectedTimings.add(id);
+            cardElement.classList.remove('border-gray-200', 'bg-gray-50');
+            cardElement.classList.add('border-teal-500', 'bg-teal-50');
+            // 加上打勾圖示讓長者更清楚有選到
+            cardElement.innerHTML += `<div class="check-mark absolute top-2 right-2 text-3xl text-teal-600">✅</div>`;
+            cardElement.classList.add('relative');
+        }
+    }
+
+    function checkLevel1() {
+        const feedback = document.getElementById('level-1-feedback');
+        feedback.classList.remove('hidden');
+
+        // 檢查是否選對
+        let allCorrectSelected = true;
+        let noWrongSelected = true;
+        let selectedCount = 0;
+
+        timingData.forEach(item => {
+            const isSelected = selectedTimings.has(item.id);
+            if (isSelected) selectedCount++;
+            
+            if (item.isCorrect && !isSelected) {
+                allCorrectSelected = false; // 有該選的沒選
+            }
+            if (!item.isCorrect && isSelected) {
+                noWrongSelected = false; // 選了不該選的
+            }
+        });
+
+        if (selectedCount === 0) {
+            feedback.textContent = '請至少選擇一個圖片喔！👆';
+            feedback.className = 'text-2xl font-bold text-gray-600 mt-4';
+            return;
+        }
+
+        if (allCorrectSelected && noWrongSelected) {
+            feedback.textContent = '答對了！太棒了！🎉';
+            feedback.className = 'text-2xl font-bold text-green-600 mt-4 pop-in';
+            // 延遲一下進入下一關
+            setTimeout(() => {
+                initLevel2();
+                showScreen('level-2-screen');
+            }, 1500);
+        } else {
+            feedback.textContent = '哎呀，還差一點點喔！請檢查看看有沒有漏掉的？🤔';
+            feedback.className = 'text-2xl font-bold text-red-500 mt-4 pop-in';
+            
+            // 提示一下：總共有4個正確答案
+            setTimeout(() => {
+                 feedback.textContent = '提示：總共有 4 個時機需要洗手喔！';
+                 feedback.className = 'text-xl font-bold text-amber-600 mt-4';
+            }, 2000);
+        }
+    }
+
+    // --- 第二關邏輯 ---
+    function initLevel2() {
+        currentStepAnswers = [];
+        // 複製一份資料並打亂
+        availableSteps = [...stepsData].sort(() => Math.random() - 0.5);
+        
+        const feedback = document.getElementById('level-2-feedback');
+        feedback.classList.add('hidden');
+
+        renderLevel2();
+    }
+
+    function renderLevel2() {
+        const dropZone = document.getElementById('drop-zone');
+        const optionsZone = document.getElementById('options-zone');
+        
+        dropZone.innerHTML = '';
+        optionsZone.innerHTML = '';
+
+        // 如果還沒選完，顯示提示文字
+        if (currentStepAnswers.length === 0) {
+            dropZone.innerHTML = '<span class="text-gray-400 text-xl font-bold self-center">請點擊下方的圖卡，把它們排在這邊</span>';
+        }
+
+        // 渲染已選擇的步驟
+        currentStepAnswers.forEach((step, index) => {
+            const el = createStepElement(step, true, index);
+            dropZone.appendChild(el);
+        });
+
+        // 渲染可選擇的步驟
+        availableSteps.forEach(step => {
+            const el = createStepElement(step, false);
+            optionsZone.appendChild(el);
+        });
+    }
+
+    function createStepElement(step, isSelected, index = -1) {
+        const div = document.createElement('div');
+        // 使用更新後的樣式 class，包含圖片容器
+        div.className = `step-option-card select-none ${isSelected ? 'selected-in-dropzone' : ''}`;
+        
+        div.innerHTML = `
+            ${isSelected ? `<div class="text-xs text-blue-600 font-bold mb-1 w-full text-left">第 ${index + 1} 步</div>` : '<div class="h-5"></div>'}
+            
+            <div class="step-icon-container">
+                <i class="${step.icon} text-3xl sm:text-4xl ${step.color}"></i>
+            </div>
+            
+            <div class="text-2xl sm:text-3xl font-black ${isSelected ? 'text-blue-800' : 'text-gray-800'} mt-1">${step.text}</div>
+            
+            <div class="text-xs sm:text-sm text-gray-600 mt-1 text-center font-bold bg-gray-100 rounded px-2 py-1 w-full">${step.desc}</div>
+        `;
+
+        // 點擊事件：若在選項區，則移至答案區；若在答案區，則移回選項區
+        div.onclick = () => {
+            if (isSelected) {
+                // 從答案區移除，加回選項區
+                currentStepAnswers.splice(index, 1);
+                availableSteps.push(step);
+            } else {
+                // 從選項區移除，加到答案區
+                availableSteps = availableSteps.filter(s => s.id !== step.id);
+                currentStepAnswers.push(step);
+            }
+            // 隱藏可能存在的錯誤訊息
+            document.getElementById('level-2-feedback').classList.add('hidden');
+            renderLevel2();
+        };
+
+        return div;
+    }
+
+    function resetLevel2() {
+        initLevel2();
+    }
+
+    function checkLevel2() {
+        const feedback = document.getElementById('level-2-feedback');
+        feedback.classList.remove('hidden');
+
+        if (currentStepAnswers.length < 7) {
+             feedback.textContent = '請把七個步驟都排上去喔！👆';
+             feedback.className = 'text-2xl font-bold text-amber-600 mt-6 block text-center';
+             return;
+        }
+
+        // 檢查順序是否完全正確
+        let isCorrect = true;
+        for (let i = 0; i < 7; i++) {
+            if (currentStepAnswers[i].order !== i + 1) {
+                isCorrect = false;
+                break;
+            }
+        }
+
+        if (isCorrect) {
+            feedback.textContent = '完全正確！太厲害了！🌟';
+            feedback.className = 'text-2xl font-bold text-green-600 mt-6 block text-center pop-in';
+            
+            // 觸發撒花特效
+            fireConfetti();
+            
+            setTimeout(() => {
+                showScreen('success-screen');
+                // 在過關畫面再放一次煙火
+                setTimeout(fireConfetti, 300);
+            }, 1500);
+        } else {
+            feedback.textContent = '順序好像怪怪的，記得口訣「內外夾弓大立腕」喔！🤔';
+            feedback.className = 'text-xl sm:text-2xl font-bold text-red-500 mt-6 block text-center pop-in';
+        }
+    }
+
+    // 觸發五彩紙屑特效的函數
+    function fireConfetti() {
+        var duration = 3000;
+        var end = Date.now() + duration;
+
+        (function frame() {
+            confetti({
+                particleCount: 5,
+                angle: 60,
+                spread: 55,
+                origin: { x: 0 },
+                colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
+            });
+            confetti({
+                particleCount: 5,
+                angle: 120,
+                spread: 55,
+                origin: { x: 1 },
+                colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
+            });
+
+            if (Date.now() < end) {
+                requestAnimationFrame(frame);
+            }
+        }());
+    }
+
+    // 初始化：確保一開始顯示首頁
+    window.onload = () => {
+        showScreen('home-screen');
+    };
+
+</script>
+</body>
+</html>
